@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой список задач</title>
+
+    <style>
+        /* --- БАЗОВЫЕ СТИЛИ И СБРОС --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .todo-app {
+            background: #ffffff;
+            width: 100%;
+            max-width: 550px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 30px;
+        }
+
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 25px;
+            color: #1a1a1a;
+        }
+
+        /* --- ФОРМА ДОБАВЛЕНИЯ ЗАДАЧИ --- */
+        .task-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .task-form input,
+        .task-form textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .task-form input:focus,
+        .task-form textarea:focus {
+            border-color: #4dabf7;
+        }
+
+        .task-form textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        /* --- КНОПКИ --- */
+        button {
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            font-size: 14px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-add {
+            background-color: #228be6;
+            color: white;
+            padding: 12px;
+        }
+
+        .btn-add:hover {
+            background-color: #1c7ed6;
+        }
+
+        /* --- СПИСОК ЗАДАЧ --- */
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        /* Стили для выполненной задачи */
+        .task-item.completed {
+            background-color: #f4fce3;
+            border-color: #d8f5a2;
+            opacity: 0.8;
+        }
+
+        .task-item.completed .task-title {
+            text-decoration: line-through;
+            color: #5c940d;
+        }
+
+        .task-item.completed .task-desc {
+            text-decoration: line-through;
+            color: #b0b0b0;
+        }
+
+        .task-info {
+            flex-grow: 1;
+            padding-right: 15px;
+        }
+
+        .task-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #212529;
+            word-break: break-word;
+        }
+
+        .task-desc {
+            font-size: 13px;
+            color: #6c757d;
+            word-break: break-word;
+        }
+
+        /* Кнопки управления в карточке */
+        .task-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-status {
+            background-color: #e3fafc;
+            color: #0c8599;
+            padding: 6px 12px;
+        }
+
+        .btn-status:hover {
+            background-color: #c5f6fa;
+        }
+
+        .task-item.completed .btn-status {
+            background-color: #fff4e6;
+            color: #d9480f;
+        }
+
+        .task-item.completed .btn-status:hover {
+            background-color: #ffe8cc;
+        }
+
+        .btn-delete {
+            background-color: #fff5f5;
+            color: #fa5252;
+            padding: 6px 12px;
+        }
+
+        .btn-delete:hover {
+            background-color: #ffe3e3;
+        }
+
+        .btn-edit {
+        background-color: #e7f5ff;
+        color: #228be6;
+        padding: 6px 12px;
+        }
+
+        .btn-edit:hover {
+        background-color: #d0ebff;
+        }
+    </style>
+</head>
+<body>
+
+<div class="todo-app">
+    <h1>📝 Мои Задачи</h1>
+
+    <div class="task-form">
+        <input type="text" id="taskTitle" placeholder="Что нужно сделать?" required>
+        <textarea id="taskDesc" placeholder="Добавьте описание (не обязательно)..."></textarea>
+        <button class="btn-add" onclick="createTask()">Добавить задачу</button>
+    </div>
+
+    <div id="taskList" class="task-list"></div>
+</div>
+
+<script>
+    const API_URL = '/api/tasks';
+
+    // 1. Получение списка (GET)
+    async function loadTasks() {
+        try {
+            const response = await fetch(API_URL);
+            const tasks = await response.json();
+            const container = document.getElementById('taskList');
+            container.innerHTML = '';
+
+            if (tasks.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#adb5bd; font-size:14px;">Список задач пуст</p>';
+                return;
+            }
+
+            tasks.forEach(task => {
+                const taskElement = document.createElement('div');
+                    taskElement.className = `task-item ${task.completed ? 'completed' : ''}`;
+
+            taskElement.innerHTML = `
+                    <div class="task-info" id="task-info-${task.id}">
+                    <div class="task-title" id="title-${task.id}">${task.title}</div>
+                    <div class="task-desc" id="desc-${task.id}">${task.description ? task.description : 'Без описания'}</div>
+                    </div>
+        <div class="task-actions" id="actions-${task.id}">
+            ${!task.completed ? `<button class="btn-edit" onclick="enableEdit(${task.id}, ${task.completed})">Ред.</button>` : ''}
+            <button class="btn-status" onclick="toggleTask(${task.id}, '${task.title}', '${task.description}', ${task.completed})">
+                ${task.completed ? 'Вернуть' : 'Готово'}
+            </button>
+            <button class="btn-delete" onclick="deleteTask(${task.id})">Удалить</button>
+        </div>
+    `;
+    container.appendChild(taskElement);
+});
+        } catch (error) {
+            console.error('Ошибка загрузки:', error);
+        }
+    }
+
+    // 2. Создание (POST)
+    async function createTask() {
+        const titleInput = document.getElementById('taskTitle');
+        const descInput = document.getElementById('taskDesc');
+
+        if (!titleInput.value.trim()) {
+            alert('Название задачи не может быть пустым!');
+            return;
+        }
+
+        const newTask = {
+            title: titleInput.value.trim(),
+            description: descInput.value.trim(),
+            isCompleted: false
+        };
+
+        await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newTask)
+        });
+
+        titleInput.value = '';
+        descInput.value = '';
+        loadTasks();
+    }
+
+    // 3. Обновление статуса (PUT)
+    async function toggleTask(id, title, description, currentStatus) {
+        const updatedTask = {
+            title: title,
+            description: description,
+            isCompleted: !currentStatus
+        };
+
+        await fetch(`${API_URL}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedTask)
+        });
+
+        loadTasks();
+    }
+
+    // 4. Удаление (DELETE)
+    async function deleteTask(id) {
+        if (confirm('Удалить эту задачу?')) {
+            await fetch(`${API_URL}/${id}`, {
+                method: 'DELETE'
+            });
+            loadTasks();
+        }
+    }
+
+    // Инициализация при загрузке страницы
+    loadTasks();
+
+    // Функция, которая заменяет текст задачи на поля ввода (инпуты)
+function enableEdit(id, currentStatus) {
+    const titleDiv = document.getElementById(`title-${id}`);
+    const descDiv = document.getElementById(`desc-${id}`);
+    const actionsDiv = document.getElementById(`actions-${id}`);
+
+    // Получаем текущий текст
+    const currentTitle = titleDiv.innerText;
+    const currentDesc = descDiv.innerText === 'Без описания' ? '' : descDiv.innerText;
+
+    // Заменяем текст на инпуты прямо в HTML
+    titleDiv.innerHTML = `<input type="text" id="edit-title-${id}" value="${currentTitle}" style="margin-bottom:5px; padding:5px;">`;
+    descDiv.innerHTML = `<textarea id="edit-desc-${id}" style="padding:5px; width:100%; font-size:12px;">${currentDesc}</textarea>`;
+
+    // Меняем кнопки управления на «Сохранить» и «Отмена»
+    actionsDiv.innerHTML = `
+        <button class="btn-add" style="padding: 6px 12px; background-color:#40c057;" onclick="saveEdit(${id}, ${currentStatus})">Сохранить</button>
+        <button class="btn-delete" style="padding: 6px 12px;" onclick="loadTasks()">Отмена</button>
+    `;
+}
+
+// Функция отправки измененных данных на бэкенд (PUT)
+async function saveEdit(id, currentStatus) {
+    const updatedTitle = document.getElementById(`edit-title-${id}`).value.trim();
+    const updatedDesc = document.getElementById(`edit-desc-${id}`).value.trim();
+
+    if (!updatedTitle) {
+        alert('Название задачи не может быть пустым!');
+        return;
+    }
+
+    const updatedTask = {
+        title: updatedTitle,
+        description: updatedDesc,
+        completed: currentStatus,
+        isCompleted: currentStatus
+    };
+
+    // Отправляем PUT запрос на эндпоинт /api/tasks/{id}
+    await fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTask)
+    });
+
+    // Перерисовываем список с новыми данными
+    loadTasks();
+}
+</script>
+
+</body>
+</html>
